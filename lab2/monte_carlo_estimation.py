@@ -6,24 +6,29 @@ import time
 
 # Параметры опциона и модели
 S0 = 100        # начальная цена актива
-K = 100         # цена страйка
-T = 1           # время до экспирации (в годах)
-r = 0.05        # безрисковая ставка
-sigma = 0.2     # волатильность актива
+T = 1           # конечное время 
+mu = 0.05       # средний темп роста
+sigma = 0.2     # волатильность
 N = 100000      # количество моделируемых путей
 
+K = 100         # цена страйка
+
 # Функция для оценки цены опциона с использованием последовательности Соболя
-def monte_carlo_option_price(num_paths, seed):
+def monte_carlo_option_price(num_paths, seed, european=False):
     # Генерация квазислучайных чисел Соболя
     sobol_points = sobol_seq.i4_sobol_generate(1, num_paths)
     norm_randoms = norm.ppf(sobol_points).flatten()  # Преобразование к нормальному распределению
 
     # Расчет конечных цен актива
-    S_T = S0 * np.exp((r - 0.5 * sigma ** 2) * T + sigma * np.sqrt(T) * norm_randoms)
+    S_T = S0 * np.exp((mu - 0.5 * sigma ** 2) * T + sigma * np.sqrt(T) * norm_randoms)
 
     # Вычисление цены опциона по формуле дисконтированной средней прибыли
-    payoff = np.maximum(S_T - K, 0)
-    option_price = np.exp(-r * T) * np.mean(payoff)
+    if european:
+        payoff = np.maximum(S_T - K, 0)
+        option_price = np.exp(-mu * T) * np.mean(payoff)
+    else:
+        option_price = np.mean(S_T)
+
     return option_price
 
 # Распараллеливание процесса
@@ -36,8 +41,8 @@ def parallel_monte_carlo(N, num_workers):
 
     return np.mean(list(results))
 
-# Оценка производительности и масштабируемости
 if __name__ == "__main__":
+    # Оценка производительности и масштабируемости
     num_workers_list = [1, 2, 4, 8]
     for num_workers in num_workers_list:
         start_time = time.time()
